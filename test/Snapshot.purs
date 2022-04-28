@@ -211,7 +211,7 @@ snapshotFormat accept mbPattern = do
               pure { output, result: Accepted, directive }
             else do
               let
-                diffCmd = "diff <(echo \"" <> output <> "\") <(echo \"" <> saved <> "\")"
+                diffCmd = "delta --light <(echo \"" <> output <> "\") <(echo \"" <> saved <> "\")"
               { stdout: diffBuff } <- exec diffCmd
               diffOutput <- liftEffect $ bufferToUTF8 diffBuff
               pure { output, result: Failed diffOutput, directive }
