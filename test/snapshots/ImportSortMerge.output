@@ -54,6 +54,7 @@ import Data.Ord (Order(GT))
 -- @format --import-sort-merge
 module ImportSortMerge where
 
+import Duplicate.Explicit.And.Hiding hiding (class Classy)
 import Duplicate.Hiding.Isct hiding (hey)
 import Duplicate.Hiding.NonIsct
 import Duplicate.Open
@@ -67,7 +68,6 @@ import Data.Array as Z
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Ord (Order(EQ, GT, LT))
 import Duplicate.Explicit (greetings, hello, hey, there)
-import Duplicate.Explicit.And.Hiding (class Classy)
 import Duplicate.Qual as Qual
 import Duplicate.Qual as QualAgain
 import Example (class Test) as Exports

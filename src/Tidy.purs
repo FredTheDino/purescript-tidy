@@ -410,7 +410,7 @@ formatModule conf (Module { header: ModuleHeader header, body: ModuleBody body }
                     )
                 )
 
-          nameProperToCmp (Name {name: (Proper s)}) = s
+          nameProperToCmp (Name { name: Proper s }) = s
 
           merger :: forall e. NonEmptyArray (Import e) -> Import e -> NonEmptyArray (Import e)
           merger acc v =
@@ -477,7 +477,7 @@ formatModule conf (Module { header: ModuleHeader header, body: ModuleBody body }
                           ->
                             do
                               explicit <- unconsBdiffA
-                              Just $ toImport a1 b2w (explicit)
+                              Just $ toImport b1 b2w (explicit)
 
                           Nothing,
                           Nothing ->
