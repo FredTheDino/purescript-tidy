@@ -2,6 +2,7 @@
 , dependencies =
   [ "arrays"
   , "control"
+  , "debug"
   , "dodo-printer"
   , "either"
   , "foldable-traversable"

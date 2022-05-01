@@ -1,0 +1,74 @@
+module ImportSortMerge where
+
+import Prim hiding (Type, Row)
+
+import Data.Array (sortBy) as Z
+import Data.Array (sortBy) as Array
+import Data.Array (sortBy) as A
+import Data.Array (sortBy)
+
+import Data.Array hiding (sortBy) as Z
+import Data.Array hiding (sortBy) as Array
+import Data.Array hiding (sortBy) as A
+
+import Data.Array as Z
+import Data.Array as Array
+import Data.Array as A
+
+import Example (Test, type (+), Test(BBB, AAA), Test(..), Test(), test, class Test)
+import Example (class Test) as Exports
+
+import Prelude
+
+import Duplicate.Explicit (hey, there)
+import Duplicate.Explicit (hey, there, hello)
+import Duplicate.Explicit (greetings)
+
+import Duplicate.Hiding.NonIsct hiding (hey, class Classy, there)
+import Duplicate.Hiding.NonIsct hiding (hey, there, class Classy, hello)
+import Duplicate.Hiding.NonIsct hiding (greetings)
+
+import Duplicate.Hiding.Isct hiding (hey, class Classy, there)
+import Duplicate.Hiding.Isct hiding (hey, there, class Classy, hello)
+import Duplicate.Hiding.Isct hiding (greetings, hey)
+
+import Duplicate.Open
+import Duplicate.Open (hey, there, hello)
+import Duplicate.Open (greetings)
+
+import Duplicate.Qual as Qual
+import Duplicate.Qual as QualAgain
+import Duplicate.Qual (hey, there, class Classy, hello) as Qual
+import Duplicate.Qual (greetings) as Qual
+
+import Duplicate.Explicit.And.Hiding hiding (hey, there, class Classy, hello)
+import Duplicate.Explicit.And.Hiding (hey, there, hello, hai)
+
+import Data.Maybe (Maybe(Just))
+import Data.Maybe (Maybe(Nothing))
+
+import Data.Ord (Order(EQ))
+import Data.Ord (Order(LT))
+import Data.Ord (Order(GT))
+
+-- @format --import-sort-merge
+module ImportSortMerge where
+
+import Duplicate.Hiding.Isct hiding (hey)
+import Duplicate.Hiding.NonIsct
+import Duplicate.Open
+import Prelude
+import Prim hiding (Row, Type)
+
+import Data.Array (sortBy)
+import Data.Array as A
+import Data.Array as Array
+import Data.Array as Z
+import Data.Maybe (Maybe(Just, Nothing))
+import Data.Ord (Order(EQ, GT, LT))
+import Duplicate.Explicit (greetings, hello, hey, there)
+import Duplicate.Explicit.And.Hiding (class Classy)
+import Duplicate.Qual as Qual
+import Duplicate.Qual as QualAgain
+import Example (class Test) as Exports
+import Example (class Test, type (+), Test(..), Test, Test(), Test(BBB, AAA), test)

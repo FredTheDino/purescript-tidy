@@ -28,12 +28,16 @@ import Data.Maybe (Maybe(..), isJust, maybe)
 import Data.Monoid (power)
 import Data.Monoid as Monoid
 import Data.Newtype (un)
+import Data.NonEmpty (NonEmpty(..))
+import Data.Set.NonEmpty (NonEmptySet)
+import Data.Set.NonEmpty as NonEmptySet
 import Data.String.CodeUnits as SCU
 import Data.Tuple (Tuple(..), fst, snd)
+import Debug as Debug
 import Dodo as Dodo
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.CST.Errors (RecoveredError(..))
-import PureScript.CST.Types (Binder(..), ClassFundep(..), ClassHead, Comment(..), DataCtor(..), DataHead, DataMembers(..), Declaration(..), Delimited, DelimitedNonEmpty, DoStatement(..), Export(..), Expr(..), FixityOp(..), Foreign(..), Guarded(..), GuardedExpr(..), Ident, IfThenElse, Import(..), ImportDecl(..), Instance(..), InstanceBinding(..), InstanceHead, Label, Labeled(..), LetBinding(..), LineFeed, Module(..), ModuleBody(..), ModuleHeader(..), ModuleName, Name(..), OneOrDelimited(..), Operator, PatternGuard(..), Proper, QualifiedName(..), RecordLabeled(..), RecordUpdate(..), Row(..), Separated(..), SourceStyle(..), SourceToken, Token(..), Type(..), TypeVarBinding(..), ValueBindingFields, Where(..), Wrapped(..))
+import PureScript.CST.Types (Binder(..), ClassFundep(..), ClassHead, Comment(..), DataCtor(..), DataHead, DataMembers(..), DataMembers(..), Declaration(..), Delimited, DelimitedNonEmpty, DoStatement(..), Export(..), Expr(..), FixityOp(..), Foreign(..), Guarded(..), GuardedExpr(..), Ident(..), IfThenElse, Import(..), ImportDecl(..), Instance(..), InstanceBinding(..), InstanceHead, Label, Labeled(..), LetBinding(..), LineFeed, Module(..), ModuleBody(..), ModuleHeader(..), ModuleName(..), Name(..), OneOrDelimited(..), Operator(..), PatternGuard(..), Proper(..), QualifiedName(..), RecordLabeled(..), RecordUpdate(..), Row(..), Separated(..), SourceStyle(..), SourceToken, Token(..), Type(..), TypeVarBinding(..), ValueBindingFields, Where(..), Wrapped(..))
 import Tidy.Doc (FormatDoc, align, alignCurrentColumn, anchor, break, flexDoubleBreak, flexGroup, flexSoftBreak, flexSpaceBreak, forceMinSourceBreaks, fromDoc, indent, joinWith, joinWithMap, leadingBlockComment, leadingLineComment, locally, softBreak, softSpace, sourceBreak, space, spaceBreak, text, trailingBlockComment, trailingLineComment)
 import Tidy.Doc (FormatDoc, toDoc) as Exports
 import Tidy.Doc as Doc
@@ -59,6 +63,7 @@ derive instance eqImportWrapOption :: Eq ImportWrapOption
 data ImportSortOption
   = ImportSortSource
   | ImportSortIde
+  | ImportSortMerge
 
 derive instance eqImportSortOpion :: Eq ImportSortOption
 
@@ -196,6 +201,105 @@ formatName conf (Name { token }) = formatToken conf token
 formatQualifiedName :: forall e a n. Format (QualifiedName n) e a
 formatQualifiedName conf (QualifiedName { token }) = formatToken conf token
 
+newtype ImportMergeKey =
+  ImportMergeKey
+    { keyword :: SourceToken
+    , module :: Name ModuleName
+    , qualified :: Maybe (Tuple SourceToken (Name ModuleName))
+    , namesQualifiedKeyword :: Maybe (Maybe SourceToken)
+    }
+
+instance Eq ImportMergeKey where
+  eq a b =
+    compareImportMergeKey a b == EQ
+
+instance Ord ImportMergeKey where
+  compare = compareImportMergeKey
+
+compareImportMergeKey :: ImportMergeKey -> ImportMergeKey -> Ordering
+compareImportMergeKey (ImportMergeKey a) (ImportMergeKey b) =
+  let
+    unwrapModuleName (Name { name: ModuleName moduleName }) = moduleName
+    toCmp x =
+      { k1: unwrapModuleName x."module"
+      , k2: x."qualified" <#> snd <#> unwrapModuleName
+      -- , k3: x.namesQualifiedKeyword <#> map _.value <#> map tokenComparator
+      }
+    tokenComparator t =
+      case t of
+        TokLeftParen -> "TokLeftParen"
+        TokRightParen -> "TokRightParen"
+        TokLeftBrace -> "TokLeftBrace"
+        TokRightBrace -> "TokRightBrace"
+        TokLeftSquare -> "TokLeftSquare"
+        TokRightSquare -> "TokRightSquare"
+        TokLeftArrow _ -> "TokLeftArrow"
+        TokRightArrow _ -> "TokRightArrow"
+        TokRightFatArrow _ -> "TokRightFatArrow"
+        TokDoubleColon _ -> "TokDoubleColon"
+        TokForall _ -> "TokForall"
+        TokEquals -> "TokEquals"
+        TokPipe -> "TokPipe"
+        TokTick -> "TokTick"
+        TokDot -> "TokDot"
+        TokComma -> "TokComma"
+        TokUnderscore -> "TokUnderscore"
+        TokBackslash -> "TokBackslash"
+        TokAt -> "TokAt"
+        TokLowerName _ _ -> "TokLowerName"
+        TokUpperName _ _ -> "TokUpperName"
+        TokOperator _ _ -> "TokOperator"
+        TokSymbolName _ _ -> "TokSymbolName"
+        TokSymbolArrow _ -> "TokSymbolArrow"
+        TokHole _ -> "TokHole"
+        TokChar _ _ -> "TokChar"
+        TokString _ _ -> "TokString"
+        TokRawString _ -> "TokRawString"
+        TokInt _ _ -> "TokInt"
+        TokNumber _ _ -> "TokNumber"
+        TokLayoutStart _ -> "TokLayoutStart"
+        TokLayoutSep _ -> "TokLayoutSep"
+        TokLayoutEnd _ -> "TokLayoutEnd"
+  in
+    compare (toCmp a) (toCmp b)
+
+newtype ImportSortable e = ImportSortable (Import e)
+
+instance Eq (ImportSortable a) where
+  eq a b =
+    compareImportSortable a b == EQ
+
+instance Ord (ImportSortable a) where
+  compare = compareImportSortable
+
+compareImportSortable :: forall a. ImportSortable a -> ImportSortable a -> Ordering
+compareImportSortable a b =
+  let
+    toCmp (ImportSortable i) =
+      case i of
+        ImportValue ident -> { k1: "ImportValue", k2: ident # un Name # _.name # un Ident, k3: Nothing }
+        ImportOp ident -> { k1: "ImportOp", k2: ident # un Name # _.name # un Operator, k3: Nothing }
+        ImportType ident ctors ->
+          { k1: "ImportType"
+          , k2: ident # un Name # _.name # un Proper
+          , k3:
+              ctors
+                <#> case _ of
+                  DataAll _ -> Nothing
+                  DataEnumerated e ->
+                    e
+                      # un Wrapped
+                      # _.value
+                      <#> (\(Separated s) -> [ s.head ] <> map snd s.tail)
+                      <#> map (un Name >>> _.name >>> un Proper)
+          }
+        ImportTypeOp _ ident -> { k1: "ImportTypeOp", k2: ident # un Name # _.name # un Operator, k3: Nothing }
+        ImportClass _ ident -> { k1: "ImportClass", k2: ident # un Name # _.name # un Proper, k3: Nothing }
+        ImportKind _ ident -> { k1: "ImportKind", k2: ident # un Name # _.name # un Proper, k3: Nothing }
+        ImportError e -> { k1: "ImportError", k2: "<notimpl>", k3: Nothing }
+  in
+    compare (toCmp a) (toCmp b)
+
 formatModule :: forall e a. Format (Module e) e a
 formatModule conf (Module { header: ModuleHeader header, body: ModuleBody body }) =
   joinWith break
@@ -218,38 +322,206 @@ formatModule conf (Module { header: ModuleHeader header, body: ModuleBody body }
     joinWithMap break (k <<< formatImportDecl conf)
 
   imports =
-    case conf.importSort of
-      ImportSortSource ->
-        formatImports identity header.imports
-      ImportSortIde -> do
-        let { yes, no } = Array.partition isOpenImport sorted
-        formatImports Doc.flatten yes
-          <> forceMinSourceBreaks 2 (formatImports Doc.flatten no)
-        where
-        sorted =
-          header.imports
-            # map toComparison
-            # Array.sortWith fst
-            # map snd
+    let
+      sorted =
+        header.imports
+          # map toComparison
+          # Array.sortWith fst
+          # map snd
 
-        toComparison (ImportDecl decl) = do
-          let modName = nameOf decl.module
-          let qualName = nameOf <<< snd <$> decl.qualified
-          case decl.names of
-            Just (Tuple hiding names) -> do
-              let Tuple cmps names' = sortImportsIde names
-              let order = if isJust hiding then 3 else 1
-              Tuple (ImportModuleCmp modName order cmps qualName) (ImportDecl decl { names = Just (Tuple hiding names') })
-            Nothing ->
-              Tuple (ImportModuleCmp modName 2 [] qualName) (ImportDecl decl)
+      sortedAndMerged =
+        header.imports
+          # mergeSimilarImports
+          # map toComparison
+          # Array.sortWith fst
+          # map snd
 
-        isOpenImport (ImportDecl a) = case a.qualified, a.names of
-          Nothing, Nothing ->
-            true
-          Nothing, Just (Tuple (Just _) _) ->
-            true
-          _, _ ->
-            false
+      separatedToNonEmptyArray :: forall a. Separated a -> NonEmptyArray a
+      separatedToNonEmptyArray (Separated sep) =
+        NonEmptyArray.fromNonEmpty (NonEmpty sep.head (snd <$> sep.tail))
+
+      nonEmptyArrayToSeparated :: forall a. Token -> NonEmptyArray a -> Separated a
+      nonEmptyArrayToSeparated token nea =
+        let
+          { head, tail } = NonEmptyArray.uncons nea
+        in
+          Separated
+            { head
+            , tail: tail <#>
+                ( \imp ->
+                    Tuple
+                      { range:
+                          { start: { line: 0, column: 0 }
+                          , end: { line: 0, column: 0 }
+                          }
+                      , leadingComments: []
+                      , trailingComments: []
+                      , value: token
+                      }
+                      imp
+                )
+            }
+
+      importsToSet :: forall a. NonEmptyArray (Import a) -> NonEmptySet (ImportSortable a)
+      importsToSet imports =
+        imports
+          <#> ImportSortable
+          # NonEmptySet.fromFoldable1
+
+      importSetToNonEmptyArray :: forall a. NonEmptySet (ImportSortable a) -> NonEmptyArray (Import a)
+      importSetToNonEmptyArray set =
+        set
+          # NonEmptySet.toUnfoldable1
+          <#> (\(ImportSortable i) -> i)
+
+      toImport
+        :: forall e
+         . Maybe SourceToken
+        -> { open :: SourceToken
+           , value :: Separated (Import e)
+           , close :: SourceToken
+           }
+        -> NonEmptyArray (Import e)
+        -> Tuple (Maybe _) (Wrapped (Separated (Import e)))
+      toImport a1 a2w things =
+        Tuple a1
+          ( Wrapped $ a2w
+              { value =
+                  nonEmptyArrayToSeparated TokComma things
+              }
+          )
+
+      mergeCtorDecls :: forall e. NonEmptySet (ImportSortable e) -> NonEmptySet (ImportSortable e)
+      mergeCtorDecls imports =
+        let
+          merge :: DataMembers -> DataMembers -> DataMembers
+          merge a b =
+            case a, b of
+              DataAll _, _ -> a
+              _, DataAll _ -> b
+              DataEnumerated (Wrapped ax), DataEnumerated (Wrapped bx) -> DataEnumerated
+                ( Wrapped
+                    ( ax
+                        { value = do
+                            axv <- separatedToNonEmptyArray <$> ax.value
+                            bxv <- separatedToNonEmptyArray <$> bx.value
+                            pure $ nonEmptyArrayToSeparated TokComma (NonEmptyArray.sortWith nameProperToCmp (axv <> bxv))
+                        }
+                    )
+                )
+
+          nameProperToCmp (Name {name: (Proper s)}) = s
+
+          merger :: forall e. NonEmptyArray (Import e) -> Import e -> NonEmptyArray (Import e)
+          merger acc v =
+            case NonEmptyArray.uncons acc of
+              { head, tail } ->
+                case head, v of
+                  ImportType hn hdm, ImportType vn vdm | nameProperToCmp hn == nameProperToCmp vn ->
+                    NonEmptyArray.fromNonEmpty (NonEmpty (ImportType hn (merge <$> hdm <*> vdm)) tail)
+                  _, _ -> NonEmptyArray.cons v acc
+
+          { head, tail } =
+            imports
+              # importSetToNonEmptyArray
+              # NonEmptyArray.uncons
+        in
+          foldl merger (NonEmptyArray.singleton head) tail
+            <#> ImportSortable
+            # NonEmptySet.fromFoldable1
+
+      mergeSimilarImports :: forall e. Array (ImportDecl e) -> Array (ImportDecl e)
+      mergeSimilarImports imports =
+        imports
+          <#>
+            ( \(ImportDecl { keyword, "module": module_, names, "qualified": qualified_ }) ->
+                Tuple (ImportMergeKey { keyword, "module": module_, "qualified": qualified_, namesQualifiedKeyword: names <#> fst }) names
+            )
+          # Map.fromFoldableWith
+              ( \a b ->
+                  case a, b of
+                    Nothing, Just (Tuple (Just { value: TokLowerName Nothing "hiding" }) b2) -> Nothing
+                    Nothing, _ -> Nothing
+                    _, Nothing -> Nothing
+                    Just (Tuple a1 a2), Just (Tuple b1 b2) ->
+                      let
+                        -- a1 is Just (TokLowerName "hiding")
+                        a2w = a2 # un Wrapped
+                        a2x = a2w # _.value
+                        a2xset = importsToSet $ separatedToNonEmptyArray a2x
+                        b2xset = importsToSet $ separatedToNonEmptyArray b2x
+
+                        b2w = a2 # un Wrapped
+                        b2x = b2 # un Wrapped # _.value
+
+                        unionUncons = importSetToNonEmptyArray $ mergeCtorDecls $ a2xset <> b2xset
+                        isctUncons = importSetToNonEmptyArray <$> mergeCtorDecls <$> NonEmptySet.intersection a2xset b2xset
+                        unconsAdiffB = importSetToNonEmptyArray <$> mergeCtorDecls <$> NonEmptySet.difference a2xset b2xset
+                        unconsBdiffA = importSetToNonEmptyArray <$> mergeCtorDecls <$> NonEmptySet.difference b2xset a2xset
+
+                      in
+                        case a1, b1 of
+                          Just { value: TokLowerName Nothing "hiding" },
+                          Just { value: TokLowerName Nothing "hiding" } ->
+                            do
+                              explicit <- isctUncons
+                              Just $ toImport a1 a2w (explicit)
+
+                          Just { value: TokLowerName Nothing "hiding" },
+                          Nothing ->
+                            do
+                              explicit <- unconsAdiffB
+                              Just $ toImport a1 a2w (explicit)
+                          Nothing,
+                          Just { value: TokLowerName Nothing "hiding" }
+                          ->
+                            do
+                              explicit <- unconsBdiffA
+                              Just $ toImport a1 b2w (explicit)
+
+                          Nothing,
+                          Nothing ->
+                            Just $ toImport a1 a2w (unionUncons)
+                          atok, btok ->
+                            let _ = Debug.spy "tok" { atok, btok } in unsafeCrashWith "notimpl token keyword"
+
+              )
+          # Map.toUnfoldable
+          <#>
+            ( \(Tuple (ImportMergeKey { keyword, "module": module_, "qualified": qualified_ }) names) ->
+                ImportDecl { keyword, "module": module_, names, "qualified": qualified_ }
+            )
+
+      toComparison (ImportDecl decl) = do
+        let modName = nameOf decl.module
+        let qualName = nameOf <<< snd <$> decl.qualified
+        case decl.names of
+          Just (Tuple hiding names) -> do
+            let Tuple cmps names' = sortImportsIde names
+            let order = if isJust hiding then 3 else 1
+            Tuple (ImportModuleCmp modName order cmps qualName) (ImportDecl decl { names = Just (Tuple hiding names') })
+          Nothing ->
+            Tuple (ImportModuleCmp modName 2 [] qualName) (ImportDecl decl)
+
+      isOpenImport (ImportDecl a) = case a.qualified, a.names of
+        Nothing, Nothing ->
+          true
+        Nothing, Just (Tuple (Just _) _) ->
+          true
+        _, _ ->
+          false
+    in
+      case conf.importSort of
+        ImportSortSource ->
+          formatImports identity header.imports
+        ImportSortIde -> do
+          let { yes, no } = Array.partition isOpenImport sorted
+          formatImports Doc.flatten yes
+            <> forceMinSourceBreaks 2 (formatImports Doc.flatten no)
+        ImportSortMerge -> do
+          let { yes, no } = Array.partition isOpenImport sortedAndMerged
+          formatImports Doc.flatten yes
+            <> forceMinSourceBreaks 2 (formatImports Doc.flatten no)
 
 data ImportModuleComparison =
   ImportModuleCmp ModuleName Int (Array ImportComparison) (Maybe ModuleName)

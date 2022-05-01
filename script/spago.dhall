@@ -2,6 +2,7 @@
 , dependencies =
   [ "arrays"
   , "console"
+  , "debug"
   , "effect"
   , "exceptions"
   , "maybe"

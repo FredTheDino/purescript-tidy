@@ -49,6 +49,9 @@ formatOptions =
           , Arg.flag [ "--import-sort-ide", "-isi" ]
               "Imports are automatically sorted like purs-ide."
               $> ImportSortIde
+          , Arg.flag [ "--import-sort-merge", "-ism" ]
+              "Imports are automatically merged and minified."
+              $> ImportSortMerge
           ]
           # Arg.default defaults.importSort
     , importWrap:
@@ -182,9 +185,11 @@ importSortFromString :: String -> Either JsonDecodeError ImportSortOption
 importSortFromString = case _ of
   "source" -> pure ImportSortSource
   "ide" -> pure ImportSortIde
+  "merge" -> pure ImportSortMerge
   other -> throwError $ UnexpectedValue (Json.fromString other)
 
 importSortToString :: ImportSortOption -> String
 importSortToString = case _ of
   ImportSortSource -> "source"
   ImportSortIde -> "ide"
+  ImportSortMerge -> "merge"
