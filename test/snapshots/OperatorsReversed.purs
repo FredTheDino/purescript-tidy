@@ -51,3 +51,9 @@ test =
       x)
     # ( \x ->
       x)
+
+-- Multi-line operator chain starts after newline
+test = a
+    # f
+    # g
+    # h

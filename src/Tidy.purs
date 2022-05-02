@@ -41,7 +41,7 @@ import PureScript.CST.Types (Binder(..), ClassFundep(..), ClassHead, Comment(..)
 import Tidy.Doc (FormatDoc, align, alignCurrentColumn, anchor, break, flexDoubleBreak, flexGroup, flexSoftBreak, flexSpaceBreak, forceMinSourceBreaks, fromDoc, indent, joinWith, joinWithMap, leadingBlockComment, leadingLineComment, locally, softBreak, softSpace, sourceBreak, space, spaceBreak, text, trailingBlockComment, trailingLineComment)
 import Tidy.Doc (FormatDoc, toDoc) as Exports
 import Tidy.Doc as Doc
-import Tidy.Hang (HangingDoc, HangingOp(..), hang, hangApp, hangBreak, hangOps, hangWithIndent)
+import Tidy.Hang (HangingDoc, HangingOp(..), hang, hangApp, hangBreak, hangOps, hangWithIndent, overHangHead)
 import Tidy.Hang as Hang
 import Tidy.Precedence (OperatorNamespace(..), OperatorTree(..), PrecedenceMap, QualifiedOperator(..), toOperatorTree)
 import Tidy.Token (UnicodeOption(..)) as Exports
@@ -1247,7 +1247,7 @@ formatElseIfChain conf = flexGroup <<< joinWithMap spaceBreak case _ of
       `flexSpaceBreak`
         indent (anchor (flexGroup (formatExpr conf cond)))
       `space`
-        Hang.toFormatDoc (anchor (formatToken conf kw2) `hang` formatHangingExpr conf expr)
+        (anchor (formatToken conf kw2) `flexSpaceBreak` indent (formatExpr conf expr))
   ElseIfThen kw1 kw2 cond kw3 expr ->
     formatToken conf kw1
       `space`
@@ -1255,9 +1255,9 @@ formatElseIfChain conf = flexGroup <<< joinWithMap spaceBreak case _ of
       `flexSpaceBreak`
         indent (anchor (flexGroup (formatExpr conf cond)))
       `space`
-        Hang.toFormatDoc (anchor (formatToken conf kw3) `hang` formatHangingExpr conf expr)
+        (anchor (formatToken conf kw3) `flexSpaceBreak` indent (formatExpr conf expr))
   Else kw1 expr ->
-    Hang.toFormatDoc (formatToken conf kw1 `hang` formatHangingExpr conf expr)
+    (formatToken conf kw1 `flexSpaceBreak` indent (formatExpr conf expr))
 
 formatRecordUpdate :: forall e a. Format (RecordUpdate e) e a
 formatRecordUpdate conf = case _ of
@@ -1273,7 +1273,7 @@ formatCaseBranch conf (Tuple (Separated { head, tail }) guarded) =
     Unconditional tok (Where { expr, bindings }) ->
       caseBinders
         `space`
-          Hang.toFormatDoc (formatToken conf tok `hang` formatHangingExpr conf expr)
+          (formatToken conf tok `flexSpaceBreak` indent (formatExpr conf expr))
         `break`
           indent (foldMap (formatWhere conf) bindings)
 
@@ -1337,7 +1337,7 @@ formatLetBinding conf = case _ of
   LetBindingPattern binder tok (Where { expr, bindings }) ->
     flexGroup (formatBinder conf binder)
       `space`
-        Hang.toFormatDoc (indent (anchor (formatToken conf tok)) `hang` formatHangingExpr conf expr)
+        (indent (anchor (formatToken conf tok)) `flexSpaceBreak` indent (formatExpr conf expr))
       `break`
         indent (foldMap (formatWhere conf) bindings)
 
@@ -1353,7 +1353,7 @@ formatValueBinding conf { name, binders, guarded } =
           indent do
             joinWithMap spaceBreak (anchor <<< formatBinder conf) binders
         `space`
-          Hang.toFormatDoc (indent (anchor (formatToken conf tok)) `hang` formatHangingExpr conf expr)
+          (indent (anchor (formatToken conf tok)) `flexSpaceBreak` indent (formatExpr conf expr))
         `break`
           indent (foldMap (formatWhere conf) bindings)
 
@@ -1377,8 +1377,8 @@ formatDoStatement conf = case _ of
     formatExpr conf expr
   DoBind binder tok expr ->
     flexGroup (formatBinder conf binder)
-      `space` Hang.toFormatDoc do
-        indent (anchor (formatToken conf tok)) `hang` formatHangingExpr conf expr
+      `space`
+        (indent (anchor (formatToken conf tok)) `flexSpaceBreak` indent (formatExpr conf expr))
   DoError e ->
     conf.formatError e
 
