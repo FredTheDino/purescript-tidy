@@ -1168,11 +1168,10 @@ formatHangingExpr conf = case _ of
       (map (formatHangingExpr conf) exprs)
 
   ExprLambda lmb ->
-    hang
-      ( (formatToken conf lmb.symbol <> alignCurrentColumn binders)
-          `space` indent (anchor (formatToken conf lmb.arrow))
-      )
-      (formatHangingExpr conf lmb.body)
+    Hang.hangBreak ((formatToken conf lmb.symbol <> alignCurrentColumn binders)
+      `space` indent (anchor (formatToken conf lmb.arrow))
+       `flexSpaceBreak`
+        indent (formatExpr conf lmb.body))
     where
     binders = flexGroup do
       joinWithMap spaceBreak (anchor <<< formatBinder conf) lmb.binders
