@@ -296,7 +296,7 @@ compareImportSortable a b =
         ImportTypeOp _ ident -> { k1: "ImportTypeOp", k2: ident # un Name # _.name # un Operator, k3: Nothing }
         ImportClass _ ident -> { k1: "ImportClass", k2: ident # un Name # _.name # un Proper, k3: Nothing }
         ImportKind _ ident -> { k1: "ImportKind", k2: ident # un Name # _.name # un Proper, k3: Nothing }
-        ImportError e -> { k1: "ImportError", k2: "<notimpl>", k3: Nothing }
+        ImportError _ -> { k1: "ImportError", k2: "<notimpl>", k3: Nothing }
   in
     compare (toCmp a) (toCmp b)
 
@@ -1201,7 +1201,7 @@ formatHangingExpr conf = case _ of
       `spaceBreak`
         indent (formatLetGroups conf (NonEmptyArray.toArray letIn.bindings))
       `spaceBreak`
-        (formatToken conf letIn.in `spaceBreak` indent (flexGroup (formatExpr conf letIn.body)))
+        (formatToken conf letIn.in `spaceBreak` (flexGroup (formatExpr conf letIn.body)))
 
   ExprDo doBlock ->
     hang
