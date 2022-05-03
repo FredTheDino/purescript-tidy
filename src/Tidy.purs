@@ -394,21 +394,31 @@ formatModule conf (Module { header: ModuleHeader header, body: ModuleBody body }
       mergeCtorDecls :: forall e. NonEmptySet (ImportSortable e) -> NonEmptySet (ImportSortable e)
       mergeCtorDecls imports =
         let
-          merge :: DataMembers -> DataMembers -> DataMembers
-          merge a b =
-            case a, b of
-              DataAll _, _ -> a
-              _, DataAll _ -> b
-              DataEnumerated (Wrapped ax), DataEnumerated (Wrapped bx) -> DataEnumerated
-                ( Wrapped
-                    ( ax
-                        { value = do
-                            axv <- separatedToNonEmptyArray <$> ax.value
-                            bxv <- separatedToNonEmptyArray <$> bx.value
-                            pure $ nonEmptyArrayToSeparated TokComma (NonEmptyArray.sortWith nameProperToCmp (axv <> bxv))
-                        }
+          merge :: Maybe DataMembers -> Maybe DataMembers -> Maybe DataMembers
+          merge ma mb =
+            case ma, mb of
+              Nothing, Nothing -> Nothing
+              Just a, Nothing -> Just a
+              Nothing, Just b -> Just b
+              Just a, Just b ->
+                Just case a, b of
+                  DataAll _, _ -> a
+                  _, DataAll _ -> b
+                  DataEnumerated (Wrapped ax), DataEnumerated (Wrapped bx) -> DataEnumerated
+                    ( Wrapped
+                        ( ax
+                            { value =
+                                case
+                                  separatedToNonEmptyArray <$> ax.value,
+                                  separatedToNonEmptyArray <$> bx.value
+                                  of
+                                  Nothing, Nothing -> Nothing
+                                  Nothing, Just bxv -> Just $ nonEmptyArrayToSeparated TokComma bxv
+                                  Just axv, Nothing -> Just $ nonEmptyArrayToSeparated TokComma axv
+                                  Just axv, Just bxv -> Just $ nonEmptyArrayToSeparated TokComma (NonEmptyArray.sortWith nameProperToCmp (axv <> bxv))
+                            }
+                        )
                     )
-                )
 
           nameProperToCmp (Name { name: Proper s }) = s
 
@@ -418,7 +428,7 @@ formatModule conf (Module { header: ModuleHeader header, body: ModuleBody body }
               { head, tail } ->
                 case head, v of
                   ImportType hn hdm, ImportType vn vdm | nameProperToCmp hn == nameProperToCmp vn ->
-                    NonEmptyArray.fromNonEmpty (NonEmpty (ImportType hn (merge <$> hdm <*> vdm)) tail)
+                    NonEmptyArray.fromNonEmpty (NonEmpty (ImportType hn (merge hdm vdm)) tail)
                   _, _ -> NonEmptyArray.cons v acc
 
           { head, tail } =
@@ -1168,10 +1178,12 @@ formatHangingExpr conf = case _ of
       (map (formatHangingExpr conf) exprs)
 
   ExprLambda lmb ->
-    Hang.hangBreak ((formatToken conf lmb.symbol <> alignCurrentColumn binders)
-      `space` indent (anchor (formatToken conf lmb.arrow))
-       `flexSpaceBreak`
-        indent (formatExpr conf lmb.body))
+    Hang.hangBreak
+      ( (formatToken conf lmb.symbol <> alignCurrentColumn binders)
+          `space` indent (anchor (formatToken conf lmb.arrow))
+          `flexSpaceBreak`
+            indent (formatExpr conf lmb.body)
+      )
     where
     binders = flexGroup do
       joinWithMap spaceBreak (anchor <<< formatBinder conf) lmb.binders

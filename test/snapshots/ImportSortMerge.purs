@@ -55,3 +55,15 @@ import Data.Maybe (Maybe(Nothing))
 import Data.Ord (Order(EQ))
 import Data.Ord (Order(LT))
 import Data.Ord (Order(GT))
+
+import Fully.Exposed.Thingy (Thingy(..))
+import Fully.Exposed.Thingy (Thingy)
+
+import Fully.Exposed.Thingy.Reversed (Thingy)
+import Fully.Exposed.Thingy.Reversed (Thingy(..))
+
+import Partially.Exposed.Thingy (Thingy(MyCtor, OtherCtor))
+import Partially.Exposed.Thingy (Thingy(..))
+
+import Partially.Exposed.Thingy.Reversed (Thingy(..))
+import Partially.Exposed.Thingy.Reversed (Thingy(MyCtor, OtherCtor))
