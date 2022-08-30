@@ -1379,6 +1379,17 @@ formatValueBinding conf { name, binders, guarded } =
         formatName conf name `flexSpaceBreak` indent do
           joinWithMap spaceBreak (anchor <<< flexGroup <<< formatBinder conf) binders
 
+zeroSrcPos :: SourcePos
+zeroSrcPos = {line: 0, column: 0}
+
+srcTok :: Token -> SourceToken
+srcTok tok =
+  { range: {start: zeroSrcPos, end: zeroSrcPos}
+  , leadingComments: []
+  , trailingComments: []
+  , value: tok
+  }
+
 formatDoStatement :: forall e a. Format (DoStatement e) e a
 formatDoStatement conf = case _ of
   DoLet kw bindings ->
@@ -1386,6 +1397,10 @@ formatDoStatement conf = case _ of
       `flexSpaceBreak` indent (formatLetGroups conf (NonEmptyArray.toArray bindings))
   DoDiscard expr ->
     formatExpr conf expr
+  DoBind bw@(BinderWildcard _) tok expr ->
+    -- Disallow `_ <- whatever` without a type annotation on that `_`, to avoid mistakes from extra `pure` and such
+    formatDoStatement
+      (DoBind (BinderTyped bw (srcTok TokDoubleColon ASCII) (TypeHole (Name {token: (srcTok TokHole "whatsMyType")}))))
   DoBind binder tok expr ->
     flexGroup (formatBinder conf binder)
       `space`
