@@ -9,6 +9,7 @@
   , "lists"
   , "maybe"
   , "newtype"
+  , "nonempty"
   , "ordered-collections"
   , "partial"
   , "prelude"

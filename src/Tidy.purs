@@ -37,7 +37,7 @@ import Debug as Debug
 import Dodo as Dodo
 import Partial.Unsafe (unsafeCrashWith)
 import PureScript.CST.Errors (RecoveredError(..))
-import PureScript.CST.Types (Binder(..), ClassFundep(..), ClassHead, Comment(..), DataCtor(..), DataHead, DataMembers(..), DataMembers(..), Declaration(..), Delimited, DelimitedNonEmpty, DoStatement(..), Export(..), Expr(..), FixityOp(..), Foreign(..), Guarded(..), GuardedExpr(..), Ident(..), IfThenElse, Import(..), ImportDecl(..), Instance(..), InstanceBinding(..), InstanceHead, Label, Labeled(..), LetBinding(..), LineFeed, Module(..), ModuleBody(..), ModuleHeader(..), ModuleName(..), Name(..), OneOrDelimited(..), Operator(..), PatternGuard(..), Proper(..), QualifiedName(..), RecordLabeled(..), RecordUpdate(..), Row(..), Separated(..), SourceStyle(..), SourceToken, Token(..), Type(..), TypeVarBinding(..), ValueBindingFields, Where(..), Wrapped(..))
+import PureScript.CST.Types (Binder(..), ClassFundep(..), ClassHead, Comment(..), DataCtor(..), DataHead, DataMembers(..), DataMembers(..), Declaration(..), Delimited, DelimitedNonEmpty, DoStatement(..), Export(..), Expr(..), FixityOp(..), Foreign(..), Guarded(..), GuardedExpr(..), Ident(..), IfThenElse, Import(..), ImportDecl(..), Instance(..), InstanceBinding(..), InstanceHead, Label, Labeled(..), LetBinding(..), LineFeed, Module(..), ModuleBody(..), ModuleHeader(..), ModuleName(..), Name(..), OneOrDelimited(..), Operator(..), PatternGuard(..), Proper(..), QualifiedName(..), RecordLabeled(..), RecordUpdate(..), Row(..), Separated(..), SourceStyle(..), SourceToken, Token(..), Type(..), TypeVarBinding(..), ValueBindingFields, Where(..), Wrapped(..), SourcePos, SourceRange)
 import Tidy.Doc (FormatDoc, align, alignCurrentColumn, anchor, break, flexDoubleBreak, flexGroup, flexSoftBreak, flexSpaceBreak, forceMinSourceBreaks, fromDoc, indent, joinWith, joinWithMap, leadingBlockComment, leadingLineComment, locally, softBreak, softSpace, sourceBreak, space, spaceBreak, text, trailingBlockComment, trailingLineComment)
 import Tidy.Doc (FormatDoc, toDoc) as Exports
 import Tidy.Doc as Doc
@@ -1400,7 +1400,22 @@ formatDoStatement conf = case _ of
   DoBind bw@(BinderWildcard _) tok expr ->
     -- Disallow `_ <- whatever` without a type annotation on that `_`, to avoid mistakes from extra `pure` and such
     formatDoStatement
-      (DoBind (BinderTyped bw (srcTok TokDoubleColon ASCII) (TypeHole (Name {token: (srcTok TokHole "whatsMyType")}))))
+      conf
+      (DoBind
+        (BinderTyped
+          bw
+          (srcTok (TokDoubleColon ASCII))
+          (TypeHole
+            (Name
+              { token: srcTok (TokHole "whatsMyType")
+              , name: Ident "whatsMyType"
+              }
+            )
+          )
+        )
+        tok
+        expr
+      )
   DoBind binder tok expr ->
     flexGroup (formatBinder conf binder)
       `space`
