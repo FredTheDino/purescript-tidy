@@ -1,4 +1,4 @@
-{ name = "purescript-tidy-test"
+{ name = "tidy-test"
 , dependencies =
   [ "aff"
   , "ansi"
@@ -33,7 +33,8 @@
   , "partial"
   , "posix-types"
   , "prelude"
-  , "purescript-language-cst-parser"
+  , "language-cst-parser"
+  , "node-glob-basic"
   , "strings"
   , "transformers"
   , "tuples"

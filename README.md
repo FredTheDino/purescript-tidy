@@ -8,7 +8,7 @@ A syntax tidy-upper (formatter) for PureScript.
 $ npm install -g purs-tidy
 ```
 
-Also available for [Nix](https://nixos.org/) via [Easy PureScript Nix](https://github.com/justinwoo/easy-purescript-nix)
+Also available for [Nix](https://nixos.org/) via [Nixpkgs 22.11+](https://search.nixos.org/packages?channel=unstable&from=0&size=50&sort=relevance&type=packages&query=purs-tidy) and [Easy PureScript Nix](https://github.com/justinwoo/easy-purescript-nix)
 
 ## Usage
 
@@ -121,14 +121,24 @@ The PureScript IDE plugin for VS Code supports `purs-tidy` as a built-in formatt
 
 ### Requirements
 
-* `purs`: 0.14
+* `purs`: 0.15
 * `spago`: 0.20
 * `node`: 14
+* `esbuild`: 0.14
 
 ### Running `bin`
 
+For local development pointing to the `output` directory:
+
 ```console
-$ spago -x ./bin/spago.dhall build
+$ npm run build
+$ ./bin/index.dev.js --help
+```
+
+For a local production build pointing to the `bundle` directory:
+
+```console
+$ npm run bundle
 $ ./bin/index.js --help
 ```
 
@@ -139,11 +149,11 @@ If you would like to use your local build of `purs-tidy` in your editor, use pat
 To accept snapshot tests:
 
 ```console
-$ spago -x ./test/spago.dhall test -a "--accept"
+$ npm run test -- -a "--accept"
 ```
 
 ### Generating the built-in operator table
 
 ```console
-$ spago -x ./script/spago.dhall run -m GenerateDefaultOperatorsModule
+$ npm run generate-default-operators
 ```

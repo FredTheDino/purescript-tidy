@@ -1,4 +1,4 @@
-{ name = "purescript-tidy"
+{ name = "tidy"
 , dependencies =
   [ "arrays"
   , "control"
@@ -13,7 +13,7 @@
   , "ordered-collections"
   , "partial"
   , "prelude"
-  , "purescript-language-cst-parser"
+  , "language-cst-parser"
   , "strings"
   , "tuples"
   ]
