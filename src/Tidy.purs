@@ -295,7 +295,6 @@ compareImportSortable a b =
           }
         ImportTypeOp _ ident -> { k1: "ImportTypeOp", k2: ident # un Name # _.name # un Operator, k3: Nothing }
         ImportClass _ ident -> { k1: "ImportClass", k2: ident # un Name # _.name # un Proper, k3: Nothing }
-        ImportKind _ ident -> { k1: "ImportKind", k2: ident # un Name # _.name # un Proper, k3: Nothing }
         ImportError _ -> { k1: "ImportError", k2: "<notimpl>", k3: Nothing }
   in
     compare (toCmp a) (toCmp b)
