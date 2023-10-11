@@ -25,7 +25,9 @@
     "generate-default-operators": "spago -x script/spago.dhall run -m GenerateDefaultOperatorsModule",
     "format-self": "npm run build && node ./bin/index.js format-in-place src 'test/*.purs' bin script",
     "check-self": "node ./bin/index.js check src 'test/*.purs' bin script",
-    "prepublishOnly": "rm -rf output bundle && npm run bundle"
+    "prepublishOnly": "rm -rf output bundle && npm run bundle",
+
+    "single-js-file-bundle": "npm run bundle && ncc build bin/index.js -o dist"
   },
   "repository": {
     "type": "git",
