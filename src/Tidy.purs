@@ -18,7 +18,10 @@ module Tidy
 import Prelude
 import Prim hiding (Row, Type)
 
+import Data.Either (Either(..))
 import Data.Array as Array
+import Data.List as List
+import Data.List ((:))
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Foldable (foldMap, foldl, foldr)
@@ -1133,21 +1136,43 @@ formatExpr :: forall e a. Format (Expr e) e a
 formatExpr conf = Hang.toFormatDoc <<< formatHangingExpr conf
 
 rewriteExpr e =
-  case e of
-    ExprOp lhs exprs | [Tuple (QualifiedName op) rhs] <- NonEmptyArray.toArray exprs ->
+  let
+    mkOp :: QualifiedName Operator -> String -> QualifiedName Operator
+    mkOp (QualifiedName op) opStr =
       let
-          flipOp :: String -> Expr _
-          flipOp opStr =
-            let
-              st = op.token
-              op2 = op {name = Operator opStr, token = st {value = TokOperator Nothing opStr}}
-            in
-            ExprOp rhs (NonEmptyArray.singleton (Tuple (QualifiedName op2) lhs))
+        st = op.token
+        op2 = op {name = Operator opStr, token = st {value = TokOperator Nothing opStr}}
       in
-      case op.name of
-        Operator ">" -> flipOp "<"
-        Operator ">=" -> flipOp "<="
-        _ -> e
+      QualifiedName op2
+
+
+    walk :: forall a. Expr a -> Expr a -> NonEmptyArray.NonEmptyArray (Tuple (QualifiedName Operator) (Expr a)) -> Expr a
+    walk default lhs rest =
+      case walkImpl (List.fromFoldable ([Right lhs] <> Array.concatMap (\(Tuple op rhs) -> [Left op, Right rhs]) (NonEmptyArray.toArray rest))) of
+        Right l : lx ->
+          ExprOp l (unwalk lx)
+        _ ->
+          unsafeCrashWith "rewriteExpr.walk impossible"
+
+    unwalk :: forall a. List.List (Either (QualifiedName Operator) (Expr a)) -> NonEmptyArray.NonEmptyArray (Tuple (QualifiedName Operator) (Expr a))
+    unwalk a =
+      case a of
+        Left l : Right r : List.Nil -> NonEmptyArray.singleton (Tuple l r)
+        Left l : Right r : rest -> NonEmptyArray.cons (Tuple l r) (unwalk rest)
+        _ ->
+          unsafeCrashWith "rewriteExpr.unwalk impossible"
+
+    walkImpl :: forall a. List.List (Either (QualifiedName Operator) a) -> List.List (Either (QualifiedName Operator) a)
+    walkImpl a =
+      case a of
+        lhs : Left (op@(QualifiedName {name: Operator ">"})) : rhs : rest -> rhs : Left (mkOp op "<") : lhs : walkImpl rest
+        lhs : Left (op@(QualifiedName {name: Operator ">="})) : rhs : rest -> rhs : Left (mkOp op "<=") : lhs : walkImpl rest
+        s : rest -> s : walkImpl rest
+        List.Nil -> List.Nil
+  in
+  case e of
+    ExprOp lhs exprs ->
+      walk e lhs exprs
     _ -> e
 
 
