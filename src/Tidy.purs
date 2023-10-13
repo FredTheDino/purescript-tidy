@@ -18,9 +18,11 @@ module Tidy
 import Prelude
 import Prim hiding (Row, Type)
 
+import PureScript.CST.Traversal (foldMapModule, defaultMonoidalVisitor)
 import Data.Either (Either(..))
 import Data.Array as Array
 import Data.List as List
+import Data.Set as Set
 import Data.List ((:))
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
@@ -1135,7 +1137,7 @@ formatRowLabeled conf (Labeled { label, separator, value }) =
 formatExpr :: forall e a. Format (Expr e) e a
 formatExpr conf = Hang.toFormatDoc <<< formatHangingExpr conf
 
-rewriteExpr e =
+rewriteInfixComparisonOperators e =
   let
     mkOp :: QualifiedName Operator -> String -> QualifiedName Operator
     mkOp (QualifiedName op) opStr =
@@ -1191,6 +1193,18 @@ rewriteExpr e =
           walk e lhs exprs
     _ -> e
 
+getExprIdents :: forall a. Expr a -> Set.Set String
+getExprIdents = foldMapModule $ defaultMonoidalVisitor
+  { onExpr = case _ of
+      ExprIdent (QualifiedName {name: Ident ident}) ->
+        Set.singleton ident
+      _ -> mempty
+  }
+
+
+rewriteExpr e =
+  e
+    # rewriteInfixComparisonOperators
 
 formatHangingExpr :: forall e a. FormatHanging (Expr e) e a
 formatHangingExpr conf a = case rewriteExpr a of
