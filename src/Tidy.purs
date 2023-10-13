@@ -401,27 +401,28 @@ formatModule conf (Module { header: ModuleHeader header, body: ModuleBody body }
           merge ma mb =
             case ma, mb of
               Nothing, Nothing -> Nothing
-              Just a, Nothing -> Just a
-              Nothing, Just b -> Just b
-              Just a, Just b ->
-                Just case a, b of
-                  DataAll _, _ -> a
-                  _, DataAll _ -> b
-                  DataEnumerated (Wrapped ax), DataEnumerated (Wrapped bx) -> DataEnumerated
-                    ( Wrapped
-                        ( ax
-                            { value =
-                                case
-                                  separatedToNonEmptyArray <$> ax.value,
-                                  separatedToNonEmptyArray <$> bx.value
-                                  of
-                                  Nothing, Nothing -> Nothing
-                                  Nothing, Just bxv -> Just $ nonEmptyArrayToSeparated TokComma bxv
-                                  Just axv, Nothing -> Just $ nonEmptyArrayToSeparated TokComma axv
-                                  Just axv, Just bxv -> Just $ nonEmptyArrayToSeparated TokComma (NonEmptyArray.sortWith nameProperToCmp (axv <> bxv))
-                            }
-                        )
-                    )
+              _, _ -> Just $ DataAll (srcTok (TokSymbolName Nothing ".."))
+--              Just a, Nothing -> Just a
+--              Nothing, Just b -> Just b
+--              Just a, Just b ->
+--                Just case a, b of
+--                  DataAll _, _ -> a
+--                  _, DataAll _ -> b
+--                  DataEnumerated (Wrapped ax), DataEnumerated (Wrapped bx) -> DataEnumerated
+--                    ( Wrapped
+--                        ( ax
+--                            { value =
+--                                case
+--                                  separatedToNonEmptyArray <$> ax.value,
+--                                  separatedToNonEmptyArray <$> bx.value
+--                                  of
+--                                  Nothing, Nothing -> Nothing
+--                                  Nothing, Just bxv -> Just $ nonEmptyArrayToSeparated TokComma bxv
+--                                  Just axv, Nothing -> Just $ nonEmptyArrayToSeparated TokComma axv
+--                                  Just axv, Just bxv -> Just $ nonEmptyArrayToSeparated TokComma (NonEmptyArray.sortWith nameProperToCmp (axv <> bxv))
+--                            }
+--                        )
+--                    )
 
           nameProperToCmp (Name { name: Proper s }) = s
 
@@ -437,6 +438,8 @@ formatModule conf (Module { header: ModuleHeader header, body: ModuleBody body }
           { head, tail } =
             imports
               # importSetToNonEmptyArray
+              -- Hack[drathier]: duplicate all import members, so map merge runs at least once for every imported type
+              # (\v -> v <> v)
               # NonEmptyArray.uncons
         in
           foldl merger (NonEmptyArray.singleton head) tail
@@ -450,6 +453,8 @@ formatModule conf (Module { header: ModuleHeader header, body: ModuleBody body }
             ( \(ImportDecl { keyword, "module": module_, names, "qualified": qualified_ }) ->
                 Tuple (ImportMergeKey { keyword, "module": module_, "qualified": qualified_, namesQualifiedKeyword: names <#> fst }) names
             )
+          -- Hack[drathier]: duplicate all import lines, so map merge runs at least once for every import line
+          # Array.concatMap (\x -> [x,x])
           # Map.fromFoldableWith
               ( \a b ->
                   case a, b of

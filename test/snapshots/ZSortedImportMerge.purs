@@ -1,0 +1,10 @@
+-- @format --import-sort-merge
+module ZSortedImportMerge where
+
+import BMaybe (AMaybe(..), AMaybe, AMaybe(AJust), qwer)
+import BMaybe (AMaybe(..), AMaybe(..), AMaybe, AMaybe, AMaybe(AJust), AMaybe(AJust), asdf)
+import CMaybe (AMaybe(Nothing))
+import DMaybe (AMaybe)
+import Data.Maybe (Maybe(..), Maybe, Maybe(Just), qwer)
+
+asdf = 42
