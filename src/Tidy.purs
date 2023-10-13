@@ -1193,18 +1193,37 @@ rewriteInfixComparisonOperators e =
           walk e lhs exprs
     _ -> e
 
-getExprIdents :: forall a. Expr a -> Set.Set String
-getExprIdents = foldMapModule $ defaultMonoidalVisitor
-  { onExpr = case _ of
-      ExprIdent (QualifiedName {name: Ident ident}) ->
-        Set.singleton ident
-      _ -> mempty
-  }
+-- getExprIdents :: forall a. Expr a -> Set.Set String
+-- getExprIdents = foldMapModule $ defaultMonoidalVisitor
+--   { onExpr = case _ of
+--       ExprIdent (QualifiedName {name: Ident ident}) ->
+--         Set.singleton ident
+--       _ -> mempty
+--   }
+
+dropTriviallyUnnecessaryParens e =
+  case e of
+    ExprParens (Wrapped {value: e2}) ->
+      case e2 of
+        ExprHole _ -> dropTriviallyUnnecessaryParens e2
+        ExprIdent _ -> dropTriviallyUnnecessaryParens e2
+        ExprBoolean _ _ -> dropTriviallyUnnecessaryParens e2
+        ExprChar _ _ -> dropTriviallyUnnecessaryParens e2
+        ExprString _ _ -> dropTriviallyUnnecessaryParens e2
+        ExprInt _ _ -> dropTriviallyUnnecessaryParens e2
+        ExprNumber _ _ -> dropTriviallyUnnecessaryParens e2
+        ExprArray _ -> dropTriviallyUnnecessaryParens e2
+        ExprRecord _ -> dropTriviallyUnnecessaryParens e2
+        ExprParens _ -> dropTriviallyUnnecessaryParens e2
+        ExprRecordAccessor _ -> dropTriviallyUnnecessaryParens e2
+        _ -> e
+    _ -> e
 
 
 rewriteExpr e =
   e
     # rewriteInfixComparisonOperators
+    # dropTriviallyUnnecessaryParens
 
 formatHangingExpr :: forall e a. FormatHanging (Expr e) e a
 formatHangingExpr conf a = case rewriteExpr a of

@@ -1,0 +1,23 @@
+-- @format --import-sort-merge
+module ZDropTrivialParens where
+
+asdf1 = (42)
+asdf2 = (qwer)
+asdf3 =
+  case a of
+    (Woop _ _) -> 11
+
+
+hole = (?asdf)
+ident = (ident)
+bool = (true)
+bool2 = (false)
+char = ('A')
+string = ("string")
+int = (42)
+number = (47.11)
+array = ([])
+record = ({})
+parens = ((((a))))
+recordAccess = (record.someField)
+recordAccessor = (_.someField)
