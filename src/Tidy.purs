@@ -1171,8 +1171,24 @@ rewriteExpr e =
         List.Nil -> List.Nil
   in
   case e of
-    ExprOp lhs exprs ->
-      walk e lhs exprs
+    ExprOp lhs exprs |
+      exprs
+        # NonEmptyArray.all (\(Tuple (QualifiedName {name: Operator op}) _) ->
+        -- [drathier]: tidy doesn't parse operator precedence, so we only allow a small set of operators with lower precedence than <
+            case op of
+              "$" -> true
+              "#" -> true
+              "<#>" -> true
+              "||" -> true
+              "&&" -> true
+              "<" -> true
+              "<=" -> true
+              ">" -> true
+              ">=" -> true
+              _ -> false
+          )
+        ->
+          walk e lhs exprs
     _ -> e
 
 
