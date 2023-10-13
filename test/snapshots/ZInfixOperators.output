@@ -1,0 +1,14 @@
+module ZInfixOperators where
+
+lt = 1 < 2
+le = 1 <= 2
+gt = 2 < 1
+ge = 2 <= 1
+
+-- @format --import-sort-merge
+module ZInfixOperators where
+
+lt = 1 < 2
+le = 1 <= 2
+gt = 2 < 1
+ge = 2 <= 1

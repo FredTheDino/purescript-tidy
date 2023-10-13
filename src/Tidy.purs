@@ -1132,8 +1132,27 @@ formatRowLabeled conf (Labeled { label, separator, value }) =
 formatExpr :: forall e a. Format (Expr e) e a
 formatExpr conf = Hang.toFormatDoc <<< formatHangingExpr conf
 
+rewriteExpr e =
+  case e of
+    ExprOp lhs exprs | [Tuple (QualifiedName op) rhs] <- NonEmptyArray.toArray exprs ->
+      let
+          flipOp :: String -> Expr _
+          flipOp opStr =
+            let
+              st = op.token
+              op2 = op {name = Operator opStr, token = st {value = TokOperator Nothing opStr}}
+            in
+            ExprOp rhs (NonEmptyArray.singleton (Tuple (QualifiedName op2) lhs))
+      in
+      case op.name of
+        Operator ">" -> flipOp "<"
+        Operator ">=" -> flipOp "<="
+        _ -> e
+    _ -> e
+
+
 formatHangingExpr :: forall e a. FormatHanging (Expr e) e a
-formatHangingExpr conf = case _ of
+formatHangingExpr conf a = case rewriteExpr a of
   ExprHole n ->
     hangBreak $ formatName conf n
   ExprSection t ->
