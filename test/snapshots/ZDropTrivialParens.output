@@ -21,6 +21,8 @@ parens = a
 recordAccess = record.someField
 recordAccessor = _.someField
 
+commentAfter = (ident) -- hi
+
 -- @format --import-sort-merge
 module ZDropTrivialParens where
 
@@ -44,3 +46,5 @@ record = {}
 parens = a
 recordAccess = record.someField
 recordAccessor = _.someField
+
+commentAfter = (ident) -- hi

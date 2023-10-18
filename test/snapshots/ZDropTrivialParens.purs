@@ -21,3 +21,6 @@ record = ({})
 parens = ((((a))))
 recordAccess = (record.someField)
 recordAccessor = (_.someField)
+
+
+commentAfter = (ident) -- hi

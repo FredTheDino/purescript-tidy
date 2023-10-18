@@ -1203,7 +1203,13 @@ rewriteInfixComparisonOperators e =
 
 dropTriviallyUnnecessaryParens e =
   case e of
-    ExprParens (Wrapped {value: e2}) ->
+    ExprParens
+      (Wrapped
+        {value: e2
+        , open: { leadingComments : [], trailingComments: [] }
+        , close: { leadingComments : [], trailingComments: [] }
+        }
+      ) ->
       case e2 of
         ExprHole _ -> dropTriviallyUnnecessaryParens e2
         ExprIdent _ -> dropTriviallyUnnecessaryParens e2
