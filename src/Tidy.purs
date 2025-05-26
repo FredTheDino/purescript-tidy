@@ -1137,70 +1137,7 @@ formatRowLabeled conf (Labeled { label, separator, value }) =
 formatExpr :: forall e a. Format (Expr e) e a
 formatExpr conf = Hang.toFormatDoc <<< formatHangingExpr conf
 
-rewriteInfixComparisonOperators e =
-  let
-    mkOp :: QualifiedName Operator -> String -> QualifiedName Operator
-    mkOp (QualifiedName op) opStr =
-      let
-        st = op.token
-        op2 = op {name = Operator opStr, token = st {value = TokOperator Nothing opStr}}
-      in
-      QualifiedName op2
-
-
-    walk :: forall a. Expr a -> Expr a -> NonEmptyArray.NonEmptyArray (Tuple (QualifiedName Operator) (Expr a)) -> Expr a
-    walk default lhs rest =
-      case walkImpl (List.fromFoldable ([Right lhs] <> Array.concatMap (\(Tuple op rhs) -> [Left op, Right rhs]) (NonEmptyArray.toArray rest))) of
-        Right l : lx ->
-          ExprOp l (unwalk lx)
-        _ ->
-          unsafeCrashWith "rewriteExpr.walk impossible"
-
-    unwalk :: forall a. List.List (Either (QualifiedName Operator) (Expr a)) -> NonEmptyArray.NonEmptyArray (Tuple (QualifiedName Operator) (Expr a))
-    unwalk a =
-      case a of
-        Left l : Right r : List.Nil -> NonEmptyArray.singleton (Tuple l r)
-        Left l : Right r : rest -> NonEmptyArray.cons (Tuple l r) (unwalk rest)
-        _ ->
-          unsafeCrashWith "rewriteExpr.unwalk impossible"
-
-    walkImpl :: forall a. List.List (Either (QualifiedName Operator) a) -> List.List (Either (QualifiedName Operator) a)
-    walkImpl a =
-      case a of
-        lhs : Left (op@(QualifiedName {name: Operator ">"})) : rhs : rest -> rhs : Left (mkOp op "<") : lhs : walkImpl rest
-        lhs : Left (op@(QualifiedName {name: Operator ">="})) : rhs : rest -> rhs : Left (mkOp op "<=") : lhs : walkImpl rest
-        s : rest -> s : walkImpl rest
-        List.Nil -> List.Nil
-  in
-  case e of
-    ExprOp lhs exprs |
-      exprs
-        # NonEmptyArray.all (\(Tuple (QualifiedName {name: Operator op}) _) ->
-        -- [drathier]: tidy doesn't parse operator precedence, so we only allow a small set of operators with lower precedence than <
-            case op of
-              "$" -> true
-              "#" -> true
-              "<#>" -> true
-              "||" -> true
-              "&&" -> true
-              "<" -> true
-              "<=" -> true
-              ">" -> true
-              ">=" -> true
-              _ -> false
-          )
-        ->
-          walk e lhs exprs
-    _ -> e
-
--- getExprIdents :: forall a. Expr a -> Set.Set String
--- getExprIdents = foldMapModule $ defaultMonoidalVisitor
---   { onExpr = case _ of
---       ExprIdent (QualifiedName {name: Ident ident}) ->
---         Set.singleton ident
---       _ -> mempty
---   }
-
+dropTriviallyUnnecessaryParens :: forall e. (Expr e) -> (Expr e)
 dropTriviallyUnnecessaryParens e =
   case e of
     ExprParens
@@ -1226,9 +1163,9 @@ dropTriviallyUnnecessaryParens e =
     _ -> e
 
 
+rewriteExpr :: forall e. (Expr e) -> (Expr e)
 rewriteExpr e =
   e
-    # rewriteInfixComparisonOperators
     # dropTriviallyUnnecessaryParens
 
 formatHangingExpr :: forall e a. FormatHanging (Expr e) e a
@@ -1518,25 +1455,6 @@ formatDoStatement conf = case _ of
       `flexSpaceBreak` indent (formatLetGroups conf (NonEmptyArray.toArray bindings))
   DoDiscard expr ->
     formatExpr conf expr
-  DoBind bw@(BinderWildcard _) tok expr ->
-    -- Disallow `_ <- whatever` without a type annotation on that `_`, to avoid mistakes from extra `pure` and such
-    formatDoStatement
-      conf
-      (DoBind
-        (BinderTyped
-          bw
-          (srcTok (TokDoubleColon ASCII))
-          (TypeHole
-            (Name
-              { token: srcTok (TokHole "whatsMyType")
-              , name: Ident "whatsMyType"
-              }
-            )
-          )
-        )
-        tok
-        expr
-      )
   DoBind binder tok expr ->
     flexGroup (formatBinder conf binder)
       `space`
